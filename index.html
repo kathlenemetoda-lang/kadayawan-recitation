@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Grade 9 – Kadayawan Term 2 Recitation</title>
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;padding:20px;font-family:Arial;background:#f3f3f3;color:#111}.container{max-width:970px;margin:auto}
+.header,.card{background:white;border-radius:28px;padding:30px;box-shadow:0 8px 25px rgba(0,0,0,.08);margin-bottom:25px}.header{text-align:center;padding:42px 25px}
+h1{margin:0;font-size:42px}h2{margin:15px 0 0;font-size:32px;font-weight:400;color:#666}#reader{max-width:650px;margin:auto}
+.status{padding:22px;border-radius:18px;text-align:center;font-size:22px;font-weight:bold;margin-bottom:20px}.info{background:#fff3cd;color:#664d03}.success{background:#d1e7dd;color:#0f5132}.error{background:#f8d7da;color:#842029}
+.student{display:none}.student.show{display:block}.student-box{background:#f8f9fa;border-radius:20px;padding:25px;margin-bottom:20px}.label{font-size:15px;color:#777;margin-top:10px}.value{font-size:26px;font-weight:bold;margin-top:4px;word-break:break-word}
+button{width:100%;border:0;border-radius:18px;padding:22px;font-size:23px;font-weight:bold;cursor:pointer;background:#198754;color:white}button:disabled{background:#999}.reset{background:#555;margin-top:12px}
+@media(max-width:600px){body{padding:10px}h1{font-size:30px}h2{font-size:23px}.card{padding:18px}.value{font-size:21px}button{font-size:20px}}
+</style></head><body><div class="container">
+<div class="header"><h1>📚 Grade 9 – Kadayawan</h1><h2>Term 2 Recitation Points</h2></div>
+<div class="card"><div id="status" class="status info">📷 Starting camera...</div><div id="reader"></div></div>
+<div id="studentCard" class="card student"><div class="student-box">
+<div class="label">STUDENT ID</div><div id="studentId" class="value"></div>
+<div class="label">NAME</div><div id="studentName" class="value"></div>
+<div class="label">SECTION</div><div id="section" class="value"></div>
+<div class="label">TERM 2 RECITATION POINTS</div><div id="points" class="value">—</div></div>
+<button id="addButton" onclick="addPoint()">➕ +1 RECITATION POINT</button><button class="reset" onclick="resetScanner()">🔄 SCAN ANOTHER STUDENT</button></div></div>
+<script>
+const API_URL="PASTE_YOUR_KADAYAWAN_APPS_SCRIPT_WEB_APP_URL_HERE";let scanner=null,currentStudent=null,scanningLocked=false;
+function showStatus(m,t){const s=document.getElementById("status");s.textContent=m;s.className="status "+t}
+function apiRequest(a,id,cb){const n="apiCallback_"+Date.now()+"_"+Math.floor(Math.random()*1e5),s=document.createElement("script"),to=setTimeout(()=>{clean();cb({success:false,error:"The server took too long to respond."})},15000);function clean(){clearTimeout(to);delete window[n];if(s.parentNode)s.parentNode.removeChild(s)}window[n]=r=>{clean();cb(r)};s.onerror=()=>{clean();cb({success:false,error:"Could not connect to the Google Sheet server."})};s.src=API_URL+"?action="+encodeURIComponent(a)+"&studentId="+encodeURIComponent(id)+"&callback="+encodeURIComponent(n)+"&t="+Date.now();document.body.appendChild(s)}
+function extractStudentId(q){let id=String(q||"").trim();if(id.startsWith("http://")||id.startsWith("https://"))try{const u=new URL(id),p=u.searchParams.get("id");if(p)id=p.trim();else{const x=u.pathname.split("/").filter(Boolean);if(x.length)id=x[x.length-1].trim()}}catch(e){}return id.replace(/^id=/i,"").trim()}
+function lookupStudent(q){const id=extractStudentId(q);if(!id){showStatus("❌ No student ID was found in the QR code.","error");scanningLocked=false;return}showStatus("🔎 Looking up "+id+"...","info");apiRequest("lookup",id,r=>{if(!r.success){showStatus("❌ "+r.error,"error");scanningLocked=false;return}currentStudent=r;document.getElementById("studentId").textContent=r.studentId;document.getElementById("studentName").textContent=r.studentName;document.getElementById("section").textContent=r.section;document.getElementById("points").textContent="Ready to add";document.getElementById("studentCard").classList.add("show");showStatus("✅ Student found!","success")})}
+function addPoint(){if(!currentStudent)return;const b=document.getElementById("addButton");b.disabled=true;b.textContent="⏳ Adding point...";showStatus("⏳ Saving recitation point...","info");apiRequest("addPoint",currentStudent.studentId,r=>{if(!r.success){b.disabled=false;b.textContent="➕ +1 RECITATION POINT";showStatus("❌ "+r.error,"error");return}currentStudent=r;document.getElementById("points").textContent=r.points;b.textContent="✅ POINT ADDED";showStatus("✅ 1 recitation point added for "+r.studentName+"!","success")})}
+async function startScanner(){showStatus("📷 Starting camera...","info");try{if(!window.isSecureContext)throw Error("Camera requires a secure HTTPS connection.");if(!navigator.mediaDevices?.getUserMedia)throw Error("This browser does not support camera access.");scanner=new Html5Qrcode("reader");await scanner.start({facingMode:"environment"},{fps:10,qrbox:{width:280,height:280},aspectRatio:1},d=>{if(scanningLocked)return;scanningLocked=true;lookupStudent(d)},()=>{});showStatus("📷 Camera ready — scan the student's QR code.","info")}catch(e){console.error(e);showStatus("⚠️ Camera could not start. "+(e.message||"")+" Please allow camera access and reload the page.","error")}}
+function resetScanner(){currentStudent=null;scanningLocked=false;document.getElementById("studentCard").classList.remove("show");const b=document.getElementById("addButton");b.disabled=false;b.textContent="➕ +1 RECITATION POINT";showStatus("📷 Scan another student's QR code.","info")}
+window.addEventListener("load",()=>setTimeout(startScanner,500));
+</script></body></html>
